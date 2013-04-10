@@ -1,0 +1,29 @@
+EUDL architecture document
+
+Mainserver - doesn't really do anything really, except offering an IRC server
+EUDL-server - handles matchmaking and all that stuff
+EUDL-client - client application
+
+EUDL-client -> EUDL-server commands:
+	(commands inspired by ixmike88, http://ixdl.net/index.php/topic/2-command-list/)
+	(command character is ".", so you have to type ".COMMAND")
+	create - Creates a new game.
+	abort - Aborts the game you created with "create"
+	sign [game id, ex "1337"] - Signs you up for a already running game, if no Identifier is specified, you'll join the next best open game.
+	unsign - Removes you of a previously signed game.
+	confirm - Confirms the current game, and starts it, you must be host tho.
+	result <0, 1, 2, draw, radiant, dire> - Gives your vote for the result of the game.
+	password [pw] - Displays or sets the password. You can only set the password on your own lobby. This is the Dota2 lobby password.
+	help [command] - Shows the command list, or a description of a command.
+	kick - Kicks a player from your lobby.
+	
+EUDL-server -> EUDL-client commands:
+	(commands are direct-messaged to the user, and not shown directly to the user, some are sent to the main channel tho)
+	joinlobby xxxx - Joins the lobby with the specified 4 digit Id.
+	leavelobby - Instructs the client to leave the lobby.
+	update xxxx <aborted (True|False)> <started (True|False)> <host> radiant <...> dire <...> - Informs about updates related to lobbies
+	showtext xxxx .... - Shows the text to the user through the client, in the specified tab. Don't use this, only for debug purposes.
+	password .... - Sends the user a private message containing the current lobby password.
+	
+players.db is a database containing all the player information
+"nick","steam","streak","wins","losses","warns","access","rating"
