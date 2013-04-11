@@ -24,6 +24,10 @@ namespace EUDL {
 		}
 
 		private void buttonOkay_Click(object sender, EventArgs e) {
+			if (textBoxNickName.Text == "") { //TODO handle other corner cases here too
+				MessageBox.Show("You entered an invalid username!");
+				return;
+			}
 			Settings s = new Settings() {
 				nickname = textBoxNickName.Text,
 				password = textBoxPassword.Text,

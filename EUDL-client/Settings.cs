@@ -21,7 +21,7 @@ namespace EUDL {
 		public Settings load() {
 			try {
 				if (!File.Exists("settings.conf")) {
-					this.nickname = this.steamname = this.password = "";
+					this.nickname = this.steamname = this.password = "default";
 					return this;
 				}
 				XmlSerializer formatter = new XmlSerializer(this.GetType());

@@ -96,14 +96,15 @@ namespace EUDL {
 		void HandleProtocolError (object sender, IrcProtocolErrorEventArgs e)
 		{
 			if (e.Code == 433) {
-
-				MessageBox.Show("Your username is already in use. Either you're trying to do fishy stuff, or you made a typo.");
-				this.Enabled = false;
-				SettingsForm sf = new SettingsForm();
-				sf.ShowDialog(this);
-				this.settings = sf.settings;
-				this.Enabled = true;
-				con.LocalUser.SetNickName (settings.nickname);//TODO change other settings too
+				this.Invoke((MethodInvoker)delegate() {
+					MessageBox.Show("Your username is already in use. Either you're trying to do fishy stuff, or you made a typo.");
+					this.Enabled = false;
+					SettingsForm sf = new SettingsForm();
+					sf.ShowDialog(this);
+					this.settings = sf.settings;
+					this.Enabled = true;
+					con.LocalUser.SetNickName(settings.nickname);//TODO change other settings too
+				});
 			}
 		}
 
@@ -181,7 +182,7 @@ namespace EUDL {
 						tb.TabIndex = 0;
 
 						TabPage tab = new TabPage("Match #" + matchname);
-						tab.Name = matchid.ToString("D4");
+						tab.Name = matchid.ToString("D4"); //name tab the same as the channel, so it's easier to access it in the tabpages collection (except the hashtag)
 						tab.Controls.Add(tb);
 						tab.Name = matchname;
 						tabControl.TabPages.Add(tab);
@@ -350,7 +351,10 @@ namespace EUDL {
 
 			} else {
 				//appendTextbox(e.Source.Name + " : " + msg + "\r\n");
-				//TODO
+				this.Invoke((MethodInvoker)delegate() {
+					textBoxMain.AppendText(e.Source.Name, Color.Red);
+					textBoxMain.AppendText(" : " + msg + "\r\n", Color.Black);
+				});
 			}
 		}
 
@@ -358,6 +362,13 @@ namespace EUDL {
 		{
 			var channel = (IrcChannel)sender;
 			Console.WriteLine(e.ChannelUser.User.NickName + " has left " + channel.Name + " (" + e.Comment + ")");
+			this.Invoke((MethodInvoker)delegate() {
+				var ch = channel.Name.Substring(1);
+				var tabs = tabControl.TabPages[ch];
+				var rtb = (RichTextBox)tabs.Controls[0];
+				rtb.AppendText(e.ChannelUser.User.NickName + " has left (" + e.Comment + ")\r\n", Color.SeaGreen);
+			});
+
 			if (channel.Name == "#main" && e.ChannelUser.User.NickName == "Bottu") {
 				this.Invoke((MethodInvoker)delegate() {
 					radioButtonMatchmaking.Checked = false;
@@ -376,6 +387,13 @@ namespace EUDL {
 		{
 			var channel = (IrcChannel)sender;
 			Console.WriteLine(e.ChannelUser.User.NickName + " has joined " + channel.Name + " (" + e.Comment + ")");
+			this.Invoke((MethodInvoker)delegate() {
+				var ch = channel.Name.Substring(1);
+				var tabs = tabControl.TabPages[ch];
+				var rtb = (RichTextBox)tabs.Controls[0];
+				rtb.AppendText(e.ChannelUser.User.NickName + " has joined (" + e.Comment + ")\r\n", Color.SeaGreen);
+			});
+
 			if (channel.Name == "#main" && e.ChannelUser.User.NickName == "Bottu") {
 				this.Invoke((MethodInvoker)delegate() {
 					radioButtonMatchmaking.Checked = true;

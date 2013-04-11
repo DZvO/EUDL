@@ -1150,12 +1150,18 @@ namespace IrcDotNet
             OnServerTimeReceived(new IrcServerTimeEventArgs(server, dateTime));
         }
 
-		/*[MessageProcessor("433")]
+		/*
+		[MessageProcessor("400-432")]
+		protected void ProcessMessageNumericError1(IrcMessage message) {
+			ProcessMessageNumericError(message);
+		}
+
+		[MessageProcessor("433")]
 		protected void ProcessNickAlreadyInUse (IrcMessage message)
 		{
 			OnErrorMessageReceived(new IrcErrorMessageEventArgs(message.Parameters[0]));
 		}*/
-
+				
         /// <summary>
         /// Process numeric error (from 400 to 599) responses from the server.
         /// </summary>
@@ -1164,7 +1170,7 @@ namespace IrcDotNet
         protected void ProcessMessageNumericError(IrcMessage message)
         {
 			//TODO handle 433 - ERR_NICKNAMEINUSE
-            Debug.Assert(message.Parameters[0] == this.localUser.NickName);
+            //Debug.Assert(message.Parameters[0] == this.localUser.NickName);
 
             // Extract error parameters and message text from message parameters.
             Debug.Assert(message.Parameters[1] != null);
