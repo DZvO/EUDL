@@ -53,7 +53,7 @@ namespace EUDL {
 					panelContextLobby.Invalidate();
 					panelContextGame.Invalidate();
 				} else {
-					//shouldn't ever happen
+					//TODO private message tab?
 				}
 			});
 		}
@@ -61,9 +61,13 @@ namespace EUDL {
 		private void buttonConnect_Click(object sender, EventArgs e) {
 			buttonConnect.Enabled = false;
 
-			con = new IrcClient ();
+			connect();
+		}
 
-			con.FloodPreventer = new IrcStandardFloodPreventer (4, 2000);
+		private void connect() {
+			con = new IrcClient();
+
+			con.FloodPreventer = new IrcStandardFloodPreventer(4, 2000);
 			con.Connected += HandleConnected;
 			con.Disconnected += HandleDisconnected;
 			con.Registered += HandleRegistered;
@@ -73,23 +77,41 @@ namespace EUDL {
 			con.ErrorMessageReceived += HandleErrorMessageReceived;
 			con.ProtocolError += HandleProtocolError;
 
-			IrcUserRegistrationInfo registrationInfo = new IrcUserRegistrationInfo () {
+			var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+			//string version = v.Major.ToString() + v.Minor.ToString() + v.Build.ToString() + v.Revision.ToString();
+			var r = "cl" + System.Guid.NewGuid().ToString().Substring(0, 8);
+			IrcUserRegistrationInfo registrationInfo = new IrcUserRegistrationInfo() {
 				Password = "secret",
-				UserName = settings.nickname,
-				RealName = settings.steamname,
+				RealName = r,
+				UserName = r,
 				NickName = settings.nickname,
 			};
-			con.Connect ("diezauberervonoz.org", false, registrationInfo);
-			/*
-			using (var connectedEvent = new ManualResetEventSlim(false)) {
-				con.Connected += (sender2, e2) => connectedEvent.Set ();
-				con.Connect ("diezauberervonoz.org", false, registrationInfo);
-				if (!connectedEvent.Wait (10000)) {
-					con.Dispose ();
-					Console.WriteLine ("Connection timed out, bailing out");
-					con = null;
+			var t = new Thread(new ThreadStart(delegate() {
+				using (var connectedEvent = new ManualResetEventSlim(false)) {
+					con.Connected += (sender2, e2) => connectedEvent.Set();
+					con.Connect("diezauberervonoz.org", false, registrationInfo);
+					if (!connectedEvent.Wait(10000)) {
+						con.Dispose();
+						Console.WriteLine("Connection timed out, bailing out");
+						con = null;
+					}
 				}
-			}*/
+			}));
+			t.Name = "Con-test";
+			t.Start();
+		}
+
+		private void disconnect() {
+			con.Disconnect();
+			con.Dispose();
+			con = null;
+		}
+
+		private void reconnect() {
+			if (con != null && con.IsConnected) {
+				disconnect();
+			}
+			connect();
 		}
 
 		#region new irc event handlers
@@ -97,13 +119,16 @@ namespace EUDL {
 		{
 			if (e.Code == 433) {
 				this.Invoke((MethodInvoker)delegate() {
+					disconnect();
+
 					MessageBox.Show("Your username is already in use. Either you're trying to do fishy stuff, or you made a typo.");
 					this.Enabled = false;
 					SettingsForm sf = new SettingsForm();
 					sf.ShowDialog(this);
 					this.settings = sf.settings;
 					this.Enabled = true;
-					con.LocalUser.SetNickName(settings.nickname);//TODO change other settings too
+
+					reconnect();
 				});
 			}
 		}

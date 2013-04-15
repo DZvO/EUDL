@@ -1169,7 +1169,6 @@ namespace IrcDotNet
         [MessageProcessor("400-599")]
         protected void ProcessMessageNumericError(IrcMessage message)
         {
-			//TODO handle 433 - ERR_NICKNAMEINUSE
             //Debug.Assert(message.Parameters[0] == this.localUser.NickName);
 
             // Extract error parameters and message text from message parameters.
