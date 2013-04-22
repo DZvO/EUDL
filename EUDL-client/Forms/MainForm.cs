@@ -1,12 +1,13 @@
 ﻿using EUDL.Forms;
 using EUDL_shared;
-using IrcDotNet;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,7 +18,7 @@ namespace EUDL {
 		private String nickname, username, password, steamname, serverpassword;
 		private Settings settings;
 		//private IRC irc;
-		private IrcClient con;
+		private EUDL_shared.Network.AsynchronousClient client;
 		Boolean isInLobby = false;
 		private string lobbypassword;
 		private int lobbyid;
@@ -65,55 +66,49 @@ namespace EUDL {
 		}
 
 		private void connect() {
-			con = new IrcClient();
+			client = new Network.AsynchronousClient();
 
-			con.FloodPreventer = new IrcStandardFloodPreventer(4, 2000);
-			con.Connected += HandleConnected;
-			con.Disconnected += HandleDisconnected;
-			con.Registered += HandleRegistered;
-			con.MotdReceived += HandleMotdReceived;
-			con.ConnectFailed += HandleConnectFailed;
-			con.Error += HandleError;
-			con.ErrorMessageReceived += HandleErrorMessageReceived;
-			con.ProtocolError += HandleProtocolError;
+			client.Connected += client_Connected;
+			client.MessageReceived += client_MessageReceived;
 
 			var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
 			//string version = v.Major.ToString() + v.Minor.ToString() + v.Build.ToString() + v.Revision.ToString();
-			var r = "cl" + System.Guid.NewGuid().ToString().Substring(0, 8);
-			IrcUserRegistrationInfo registrationInfo = new IrcUserRegistrationInfo() {
-				Password = "secret",
-				RealName = r,
-				UserName = r,
-				NickName = settings.nickname,
-			};
 			var t = new Thread(new ThreadStart(delegate() {
 				using (var connectedEvent = new ManualResetEventSlim(false)) {
-					con.Connected += (sender2, e2) => connectedEvent.Set();
-					con.Connect("diezauberervonoz.org", false, registrationInfo);
+					client.Connected += () => connectedEvent.Set();
+					client.Connect("localhost");
 					if (!connectedEvent.Wait(10000)) {
-						con.Dispose();
 						Console.WriteLine("Connection timed out, bailing out");
-						con = null;
+						client = null;
 					}
 				}
 			}));
-			t.Name = "Con-test";
+			t.Name = "Connection-test";
 			t.Start();
 		}
 
-		private void disconnect() {
-			con.Disconnect();
-			con.Dispose();
-			con = null;
-		}
-
-		private void reconnect() {
-			if (con != null && con.IsConnected) {
-				disconnect();
+		void client_MessageReceived(string message) {
+			string[] msg = message.Split('\x1');
+			if (msg[0] == "accepted") {
+				setMainLobbyControls("online");
+				this.Invoke((MethodInvoker)delegate() {
+					textBoxMain.AppendText("Credentials confirmed by server, ready to roll.", Color.Green);
+				});
+			} else if (msg[0] == "denied") {
+				if (msg[1] == "2") {//user with that name already online??? TODO
+				} else if (msg[1] == "1") {//wrong password TODO
+				}
 			}
-			connect();
 		}
 
+		void client_Connected() {
+			this.Invoke((MethodInvoker)delegate() {
+				textBoxMain.AppendText("Connected, trying to auth...", Color.Green);
+			});
+			client.Send(username + "\x1" + password + "\x1" + "a\x1");
+		}
+
+		/*
 		#region new irc event handlers
 		void HandleProtocolError (object sender, IrcProtocolErrorEventArgs e)
 		{
@@ -131,31 +126,6 @@ namespace EUDL {
 					reconnect();
 				});
 			}
-		}
-
-		void HandleErrorMessageReceived (object sender, IrcErrorMessageEventArgs e)
-		{
-
-		}
-
-		void HandleError (object sender, IrcErrorEventArgs e)
-		{
-
-		}
-
-		void HandleConnectFailed (object sender, IrcErrorEventArgs e)
-		{
-			
-		}
-
-		void HandleMotdReceived (object sender, EventArgs e)
-		{
-
-		}
-
-		void HandleDisconnected (object sender, EventArgs e)
-		{
-
 		}
 
 		void HandleConnected (object sender, EventArgs e)
@@ -240,17 +210,6 @@ namespace EUDL {
 			}
 		}
 
-		void HandleLeftChannel (object sender, IrcChannelEventArgs e)
-		{
-			e.Channel.UserJoined -= HandleUserJoined;
-			e.Channel.UserLeft -= HandleUserLeft;
-			e.Channel.MessageReceived -= HandleMessageReceived;
-			e.Channel.NoticeReceived -= HandleNoticeReceived;
-			e.Channel.UsersListReceived -= HandleUsersListReceived;
-
-			var localuser = (IrcLocalUser)sender;
-		}
-
 		void HandleJoinedChannel (object sender, IrcChannelEventArgs e)
 		{
 			e.Channel.UserJoined += HandleUserJoined;
@@ -271,11 +230,6 @@ namespace EUDL {
 				textBoxInput.Focus();
 				textBoxInput.Select();
 			});
-		}
-
-		void HandleUserKicked (object sender, IrcChannelUserEventArgs e)
-		{
-			
 		}
 
 		void HandleUsersListReceived (object sender, EventArgs e)
@@ -308,11 +262,6 @@ namespace EUDL {
 					});
 				}
 			}
-		}
-
-		void HandleNoticeReceived (object sender, IrcMessageEventArgs e)
-		{
-			
 		}
 
 		void HandleMessageReceived (object sender, IrcMessageEventArgs e)
@@ -433,6 +382,7 @@ namespace EUDL {
 			}
 		}
 		#endregion
+		*/
 
 		public void setMainLobbyControls(string s) {
 			this.Invoke((MethodInvoker)delegate() {
@@ -440,11 +390,6 @@ namespace EUDL {
 					this.textBoxInput.Enabled = true;
 					this.buttonCreateLobby.Enabled = true;
 					this.buttonSign.Enabled = true;
-					this.buttonSend.Enabled = true;
-				} else if (s == "nomatchmaking") {
-					this.textBoxInput.Enabled = true;
-					this.buttonCreateLobby.Enabled = false;
-					this.buttonSign.Enabled = false;
 					this.buttonSend.Enabled = true;
 				} else if (s == "offline") {
 				}
@@ -495,10 +440,10 @@ namespace EUDL {
 					if (input.StartsWith(".help")) {
 						//TODO show help
 					} else {
-						con.LocalUser.SendMessage("Bottu", input);
+						//TODO send command
 					}
 				} else {
-					con.LocalUser.SendMessage("#main", textBoxInput.Text);
+					client.Send(this.username + "\x1" + this.password + "\x1" + "m\x1" + input);
 				}
 			}
 			textBoxInput.Clear();
@@ -510,11 +455,11 @@ namespace EUDL {
 		}
 
 		private void buttonCreateLobby_Click(object sender, EventArgs e) {
-			con.LocalUser.SendMessage("Bottu", ".create");
+			client.Send(username + "\x1" + password + "\x1" + "c\x1");
 		}
 
 		private void buttonSign_Click(object sender, EventArgs e) {
-			con.LocalUser.SendMessage("Bottu", ".sign");
+			client.Send(username + "\x1" + password + "\x1" + "j\x1");
 		}
 
 		private void buttonSettings_Click(object sender, EventArgs e) {

@@ -1,5 +1,5 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EUDL-client", "EUDL-client\EUDL-client.csproj", "{2255C905-4D2F-45A1-9EA5-6AB2DA08E02F}"
 EndProject
@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EUDL-server", "EUDL-server\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EUDL-shared", "EUDL-shared\EUDL-shared.csproj", "{072AA86D-E9EA-402F-BCFC-1ABECF9D4F6A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IrcDotNet", "IrcDotNet\IrcDotNet.csproj", "{47D551DA-96ED-4EF6-96BF-4832059D4700}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{23F79855-53B9-4E54-93D9-049D11729BA9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,10 +27,10 @@ Global
 		{072AA86D-E9EA-402F-BCFC-1ABECF9D4F6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{072AA86D-E9EA-402F-BCFC-1ABECF9D4F6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{072AA86D-E9EA-402F-BCFC-1ABECF9D4F6A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{47D551DA-96ED-4EF6-96BF-4832059D4700}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{47D551DA-96ED-4EF6-96BF-4832059D4700}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{47D551DA-96ED-4EF6-96BF-4832059D4700}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{47D551DA-96ED-4EF6-96BF-4832059D4700}.Release|Any CPU.Build.0 = Release|Any CPU
+		{23F79855-53B9-4E54-93D9-049D11729BA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23F79855-53B9-4E54-93D9-049D11729BA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23F79855-53B9-4E54-93D9-049D11729BA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23F79855-53B9-4E54-93D9-049D11729BA9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

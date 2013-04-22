@@ -3,16 +3,19 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using IrcDotNet;
 
 namespace EUDL_server {
+	class Player : EUDL_shared.Player {
+		public Socket socket;
+	}
 	class Server {
 		private bool keepRunning = true;
-		IrcClient connection;
+		EUDL_shared.Network.AsynchronousServer server;
 		List<Player> players;
 		List<Game> games;
 		int currentId = 0;
@@ -27,226 +30,71 @@ namespace EUDL_server {
 			if (players.Count == 0) {
 				Console.WriteLine ("Database empty.");
 			} else {
-				Console.WriteLine ("Database dump: " + players.Print ());
+				
 			}
 
-			Console.WriteLine ("\r\n=== Connecting to IRC server ===");
+			Console.WriteLine("\r\n=== Binding server to \"localhost\" ===\r\n");
 
-			connection = new IrcClient ();
+			server = new Network.AsynchronousServer();
+			server.ClientConnected += server_ClientConnected;
+			server.MessageReceived += server_MessageReceived;
+			server.StartListening("localhost");
 
-			connection.FloodPreventer = new IrcStandardFloodPreventer (4, 2000);
-			connection.Connected += HandleConnected;
-			connection.Disconnected += HandleDisconnected;
-			connection.Registered += HandleRegistered;
-			connection.MotdReceived += HandleMotdReceived;
-			connection.ConnectFailed += HandleConnectFailed;
-			connection.Error += HandleError;
-			connection.ErrorMessageReceived += HandleErrorMessageReceived;
-			connection.ProtocolError += HandleProtocolError;
-
-			IrcUserRegistrationInfo registrationInfo = new IrcUserRegistrationInfo () {
-				Password = "secret",
-				UserName = "Bottu",
-				RealName = "Bottu",
-				NickName = "Bottu",
-			};
-			using (var connectedEvent = new ManualResetEventSlim(false)) {
-				connection.Connected += (sender2, e2) => connectedEvent.Set ();
-				connection.Connect ("diezauberervonoz.org", false, registrationInfo);
-				if (!connectedEvent.Wait (10000)) {
-					connection.Dispose ();
-					Console.WriteLine ("Connection timed out, bailing out");
-					connection = null;
-				}
-			}
-
-			if (connection != null) {
+			if (server != null) {
 				Console.ReadLine ();
-
-				connection.Quit ("bye");
 			}
 			savePlayerList(players);
 		}
 
-		void HandleProtocolError (object sender, IrcProtocolErrorEventArgs e)
-		{
-			if (e.Code == 433) {
-				connection.LocalUser.SetNickName (connection.LocalUser.NickName + "_");
-				Console.WriteLine("nick in use, changing nick");
-			}
+		void server_ClientConnected(System.Net.Sockets.Socket client) {
 		}
 
-		void HandleErrorMessageReceived (object sender, IrcErrorMessageEventArgs e)
-		{
+		void server_MessageReceived(System.Net.Sockets.Socket client, string message) {
+			string[] msg = message.Split('\x1');
+			string username = msg[0];
+			string pw = msg[1];
+			string command = msg[2];
 
-		}
-
-		void HandleError (object sender, IrcErrorEventArgs e)
-		{
-
-		}
-
-		void HandleConnectFailed (object sender, IrcErrorEventArgs e)
-		{
-			
-		}
-
-		void HandleMotdReceived (object sender, EventArgs e)
-		{
-
-		}
-
-		void HandleDisconnected (object sender, EventArgs e)
-		{
-
-		}
-
-		void HandleConnected (object sender, EventArgs e)
-		{
-		}
-
-		void HandleConnectionFailed (IrcDotNet.IrcClient client, string msg)
-		{
-			Console.WriteLine("connection failed: " + msg);
-		}
-
-		void HandleRegistered (object sender, EventArgs e)
-		{
-			var client = (IrcClient)sender;
-			//client.LocalUser.MessageReceived += ;
-			client.LocalUser.JoinedChannel += HandleJoinedChannel;
-			client.LocalUser.LeftChannel += HandleLeftChannel;
-			client.LocalUser.MessageReceived += HandlePrivateMessageReceived;
-			//client.LocalUser.NoticeReceived += LocalUser_NoticeReceived;
-			//client.LocalUser.Quit += LocalUser_Quit;
-
-			Console.WriteLine("registered");
-
-			Console.WriteLine("Matchmaking server started, and connected to IRC maniframe (" + "diezauberervonoz.org" + ").");
-			connection.Channels.Join ("#main");
-		}
-
-		void HandlePrivateMessageReceived (object sender, IrcMessageEventArgs e) {
-			//("recvd1: " + e.Text + "\r\n");
-			//var source = (IrcLocalUser)sender;
-			string source = e.Source.Name;
-			string msg = e.Text;
-			Console.WriteLine("[priv] " + source + " : " + msg);
-
-			if (msg == ".create") {
-				Game newgame = new Game(currentId++, source, System.Guid.NewGuid().ToString().Substring(0, 4));
+			if (command == "a") { //auth
+				if (findPlayer(client, username, pw) == null) {
+					//TODO add database username/pw check
+					foreach (Player p in players) {
+						if (p.username == username) {
+							server.Send(client, "denied\x1" + "2");
+							break;
+						}
+					}
+					players.Add(new Player() {
+						socket = client,
+						username = username,
+						password = pw,
+					});
+					server.Send(client, "accepted");
+				}
+			} else if (command == "c") { //create lobby
+				Game newgame = new Game(currentId++, username, System.Guid.NewGuid().ToString().Substring(0, 4));
 				Random r = new Random();
-				newgame.teams[(int)Math.Round(r.NextDouble())].Add(source);
+				newgame.teams[(int)Math.Round(r.NextDouble())].Add(username);
 				games.Add(newgame);
 
-				sendJoinlobby(source, newgame.id);
-				sendPassword(source, newgame.password);
-				connection.LocalUser.SendMessage(source, "#showtext" + " " + newgame.id.ToString("D4") + " " + "Created new lobby " + newgame.id.ToString("D4") + ", with password " + newgame.password + ".");
-				sendUpdate("#main", newgame.id, false, false, newgame.host, newgame.teams);
-				connection.LocalUser.SendMessage("#main", "#showtext main " + source + " has created a new lobby! (" + newgame.id.ToString("D4") + ")");//TODO client can do this on his own, don't send text
-				connection.Channels.Join(newgame.id.ToString("D4"));
-
-			} else if (msg == ".abort") {
-				Game g = null;
-				foreach (Game s in games)
-					if (s.host == source)
-						g = s;
-				if (g == null) {
-					connection.LocalUser.SendMessage(source, "#showtext" + " " + "main" + " " + "I don't think you're actually hosting a game right now, mate");//TODO the client can do this on his own, don't send text
-					return;
+				foreach (Player p in players) {
+					server.Send(p.socket, "u\x1false\x1false\x1" + username + "\x1\x2" + username + "\x2");
 				}
-				games.Remove(g);
-
-				foreach (List<string> team in g.teams)
-					foreach (string player in team) {
-						sendLeaveLobby(player);
-					}
-				sendLeaveLobby(source);
-				sendUpdate("#main", g.id, true);
-				connection.LocalUser.SendMessage("#main", "#showtext" + " " + "main" + " " + "Lobby by " + source + " has been aborted."); //TODO the client can display this text on his own, don't need to send this
-
-			} else if (msg.StartsWith(".sign")) {
-				//TODO add matchmaking algorithm, remember to send the client the password
-
-			} else if (msg == ".unsign") {
-				foreach (Game g in games) {
-					if (g.host == source) {
-						connection.LocalUser.SendMessage(source, "#showtext" + " " + "main" + " " + "You can't unsign from your own lobby");//TODO don't send text
-						return;
-					}
-					if (g.teams[0].Remove(source) || g.teams[1].Remove(source)) {
-						sendUpdate("#main", g.id, false, g.started, g.host, g.teams);
-						sendLeaveLobby(source);
-						return;
-					}
-				}
-				connection.LocalUser.SendMessage(source, "#showtext" + " " + "main" + " " + "You aren't in any lobby at the moment."); //TODO don't send text
-
-			} else if (msg == ".confirm") {
-			} else if (msg.StartsWith(".result")) {
-			} else if (msg.StartsWith(".password")) {
-			} else if (msg == ".kick") {
+			} else if (command == "a") { //abort lobby
+			} else if (command == "j") { //join lobby
+			} else if (command == "g") { //confirm and start lobby
+			} else if (command == "r") { //result vote
+			} else if (command == "p") { //set lobby password
+			} else if (command == "k") { //kick user from lobby
 			}
 		}
 
-		void HandleLeftChannel (object sender, IrcChannelEventArgs e)
-		{
-			e.Channel.UserJoined -= HandleUserJoined;
-			e.Channel.UserLeft -= HandleUserLeft;
-			e.Channel.MessageReceived -= HandleMessageReceived;
-			e.Channel.NoticeReceived -= HandleNoticeReceived;
-			e.Channel.UsersListReceived -= HandleUsersListReceived;
-
-			var localuser = (IrcLocalUser)sender;
-		}
-
-		void HandleJoinedChannel (object sender, IrcChannelEventArgs e)
-		{
-			e.Channel.UserJoined += HandleUserJoined;
-			e.Channel.UserLeft += HandleUserLeft;
-			e.Channel.MessageReceived += HandleMessageReceived;
-			e.Channel.NoticeReceived += HandleNoticeReceived;
-			e.Channel.UsersListReceived += HandleUsersListReceived;
-			e.Channel.UserKicked += HandleUserKicked;
-
-			var localuser = (IrcLocalUser)sender;
-
-			if (e.Channel.Name == "#main") {
-				Console.WriteLine("Joined #main channel. Ready to roll.\r\n");
-				Console.ResetColor();
+		Player findPlayer(Socket s, string u, string pw) {
+			foreach (Player p in players) {
+				if (p.socket == s && p.username == u && p.password == pw)
+					return p;
 			}
-		}
-
-		void HandleUserKicked (object sender, IrcChannelUserEventArgs e)
-		{
-			
-		}
-
-		void HandleUsersListReceived (object sender, EventArgs e)
-		{
-			
-		}
-
-		void HandleNoticeReceived (object sender, IrcMessageEventArgs e)
-		{
-			
-		}
-
-		void HandleMessageReceived (object sender, IrcMessageEventArgs e)
-		{
-			
-		}
-
-		void HandleUserLeft (object sender, IrcChannelUserEventArgs e)
-		{
-			var channel = (IrcChannel)sender;
-			Console.WriteLine(e.ChannelUser.User.NickName + " has left " + channel.Name + " (" + e.Comment + ")");
-		}
-
-		void HandleUserJoined (object sender, IrcChannelUserEventArgs e)
-		{
-			var channel = (IrcChannel)sender;
-			Console.WriteLine(e.ChannelUser.User.NickName + " has joined " + channel.Name + " (" + e.Comment + ")");
+			return null;
 		}
 
 		public void readPlayerList() {
@@ -275,16 +123,16 @@ namespace EUDL_server {
 
 		#region send* Functions
 		public void sendJoinlobby(string target, int matchid) {
-			connection.LocalUser.SendMessage(target, "#joinlobby" + " " + matchid.ToString("D4"));
+			//connection.LocalUser.SendMessage(target, "#joinlobby" + " " + matchid.ToString("D4"));
 		}
 
 		public void sendLeaveLobby(string target) {
-			connection.LocalUser.SendMessage(target, "#leavelobby");
+			//connection.LocalUser.SendMessage(target, "#leavelobby");
 		}
 
 		public void sendUpdate(string target, int matchid, bool aborted, bool started = false, string host = null, List<string>[] players = null) {
 			if (aborted == true) {
-				connection.LocalUser.SendMessage(target, "#update" + " " + matchid.ToString("D4") + " " + aborted.ToString());
+			//	connection.LocalUser.SendMessage(target, "#update" + " " + matchid.ToString("D4") + " " + aborted.ToString());
 				return;
 			}
 			string p = "";
@@ -297,11 +145,11 @@ namespace EUDL_server {
 				p += player + " ";
 			}
 			p = p.Substring(0, p.Length - 1);
-			connection.LocalUser.SendMessage(target, "#update" + " " + matchid.ToString("D4") + " " + aborted.ToString() + " " + started.ToString() + " " + host + " " + p);
+		//	connection.LocalUser.SendMessage(target, "#update" + " " + matchid.ToString("D4") + " " + aborted.ToString() + " " + started.ToString() + " " + host + " " + p);
 		}
 
 		public void sendPassword(string target, string pw) {
-			connection.LocalUser.SendMessage(target, "#password" + " " + pw);
+		//	connection.LocalUser.SendMessage(target, "#password" + " " + pw);
 		}
 		#endregion
 	}
