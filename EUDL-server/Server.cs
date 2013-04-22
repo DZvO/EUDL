@@ -78,10 +78,10 @@ namespace EUDL_server {
 				games.Add(newgame);
 
 				foreach (Player p in players) {
-					server.Send(p.socket, "u\x1false\x1false\x1" + username + "\x1\x2" + username + "\x2");
+					server.Send(p.socket, "u\x1false\x1false\x1" + username + "\x1\x2" + username + "\x1\x2");
 				}
 			} else if (command == "a") { //abort lobby
-			} else if (command == "j") { //join lobby
+			} else if (command == "j") { //search/join lobby
 			} else if (command == "g") { //confirm and start lobby
 			} else if (command == "r") { //result vote
 			} else if (command == "p") { //set lobby password

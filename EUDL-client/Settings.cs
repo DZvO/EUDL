@@ -8,7 +8,7 @@ using System.Xml.Serialization;
 
 namespace EUDL {
 	public class Settings {
-		public string nickname, steamname, password;
+		public string username, steamname, password;
 
 		public bool save() {
 			FileStream outfile = File.Create("settings.conf");
@@ -21,7 +21,7 @@ namespace EUDL {
 		public Settings load() {
 			try {
 				if (!File.Exists("settings.conf")) {
-					this.nickname = this.steamname = this.password = "default";
+					this.username = this.steamname = this.password = "default";
 					return this;
 				}
 				XmlSerializer formatter = new XmlSerializer(this.GetType());
@@ -32,7 +32,7 @@ namespace EUDL {
 				MemoryStream stream = new MemoryStream(buffer);
 				return (Settings)formatter.Deserialize(stream);
 			} catch (Exception e) {
-				this.nickname = this.steamname = this.password = "";
+				this.username = this.steamname = this.password = "";
 				return this;
 			}
 		}

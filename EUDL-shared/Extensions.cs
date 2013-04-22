@@ -22,7 +22,7 @@ namespace EUDL_shared {
 		public static string Print(this List<Player> ps) {
 			string r = "";
 			foreach (Player k in ps) {
-				r += k.nick + " (" + k.steam + "), ";
+				r += k.username + " (" + k.steam + "), ";
 			}
 			return r;
 		}

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace EUDL_shared {
 	[Serializable()]
 	public class Player {
-		public string nick, steam;
+		public string username, steam, password;
 		public int streak, wins, losses, warns, access;
 		public float rating;
 	}

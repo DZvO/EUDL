@@ -15,7 +15,6 @@ using System.Windows.Forms;
 
 namespace EUDL {
 	public partial class MainForm : Form {
-		private String nickname, username, password, steamname, serverpassword;
 		private Settings settings;
 		//private IRC irc;
 		private EUDL_shared.Network.AsynchronousClient client;
@@ -28,8 +27,6 @@ namespace EUDL {
 			InitializeComponent();
 			settings = new Settings();
 			settings = settings.load();
-
-			nickname = "client" + System.Guid.NewGuid().ToString().Substring(0, 4);
 			//irc = new IRC(Properties.Resources.ServerAddress, settings.nickname, "secret", "eudlclient", settings.steamname);
 			tabControl.Selected += tabControl_Selected;
 			games = new List<Game>();
@@ -93,69 +90,39 @@ namespace EUDL {
 				setMainLobbyControls("online");
 				this.Invoke((MethodInvoker)delegate() {
 					textBoxMain.AppendText("Credentials confirmed by server, ready to roll.", Color.Green);
+					radioButtonMatchmaking.Checked = true;
+					radioButtonMatchmaking.Invalidate();
 				});
 			} else if (msg[0] == "denied") {
 				if (msg[1] == "2") {//user with that name already online??? TODO
 				} else if (msg[1] == "1") {//wrong password TODO
 				}
+				this.Enabled = false;
+				SettingsForm sf = new SettingsForm();
+				sf.ShowDialog(this);
+				this.settings = sf.settings;
+				this.Enabled = true;
+				client.Send(settings.username + "\x1" + settings.password + "\x1" + "a\x1");
+			} else if (msg[0] == "u") { //update
+				Boolean aborted = Convert.ToBoolean(msg[1]);
+				Boolean started = Convert.ToBoolean(msg[2]);
+				string host = msg[3];
+				string[] radiant = message.Split('\x2')[1].Split('\x1');
+				string[] dire = message.Split('\x2')[2].Split('\x1');
 			}
 		}
 
 		void client_Connected() {
 			this.Invoke((MethodInvoker)delegate() {
 				textBoxMain.AppendText("Connected, trying to auth...", Color.Green);
+				radioButtonConnected.Checked = true;
+				radioButtonConnected.Invalidate();
 			});
-			client.Send(username + "\x1" + password + "\x1" + "a\x1");
+			client.Send(settings.username + "\x1" + settings.password + "\x1" + "a\x1");
 		}
 
 		/*
 		#region new irc event handlers
-		void HandleProtocolError (object sender, IrcProtocolErrorEventArgs e)
-		{
-			if (e.Code == 433) {
-				this.Invoke((MethodInvoker)delegate() {
-					disconnect();
-
-					MessageBox.Show("Your username is already in use. Either you're trying to do fishy stuff, or you made a typo.");
-					this.Enabled = false;
-					SettingsForm sf = new SettingsForm();
-					sf.ShowDialog(this);
-					this.settings = sf.settings;
-					this.Enabled = true;
-
-					reconnect();
-				});
-			}
-		}
-
-		void HandleConnected (object sender, EventArgs e)
-		{
-			this.Invoke((MethodInvoker)delegate() {
-				radioButtonConnected.Checked = true;
-				radioButtonConnected.Invalidate();
-			});
-		}
-
-		void HandleConnectionFailed (IrcDotNet.IrcClient client, string msg)
-		{
-			Console.WriteLine("connection failed: " + msg);
-		}
-
-		void HandleRegistered (object sender, EventArgs e)
-		{
-			var client = (IrcClient)sender;
-			//client.LocalUser.MessageReceived += ;
-			client.LocalUser.JoinedChannel += HandleJoinedChannel;
-			client.LocalUser.LeftChannel += HandleLeftChannel;
-			client.LocalUser.MessageReceived += HandlePrivateMessageReceived;
-			//client.LocalUser.NoticeReceived += LocalUser_NoticeReceived;
-			//client.LocalUser.Quit += LocalUser_Quit;
-
-			Console.WriteLine("registered");
-
-			con.Channels.Join ("#main");
-		}
-
 		void HandlePrivateMessageReceived (object sender, IrcMessageEventArgs e) {
 			//("recvd1: " + e.Text + "\r\n");
 			//var source = (IrcLocalUser)sender;
@@ -208,28 +175,6 @@ namespace EUDL {
 				//appendTextbox(e.Source.Name + " : " + msg + "\r\n");
 				//TODO
 			}
-		}
-
-		void HandleJoinedChannel (object sender, IrcChannelEventArgs e)
-		{
-			e.Channel.UserJoined += HandleUserJoined;
-			e.Channel.UserLeft += HandleUserLeft;
-			e.Channel.MessageReceived += HandleMessageReceived;
-			e.Channel.NoticeReceived += HandleNoticeReceived;
-			e.Channel.UsersListReceived += HandleUsersListReceived;
-			e.Channel.UserKicked += HandleUserKicked;
-
-			var localuser = (IrcLocalUser)sender;
-
-			if (e.Channel.Name == "#main") {
-				Console.WriteLine("Joined #main channel. Ready to roll.\r\n");
-				Console.ResetColor();
-			}
-
-			this.Invoke((MethodInvoker)delegate() {
-				textBoxInput.Focus();
-				textBoxInput.Select();
-			});
 		}
 
 		void HandleUsersListReceived (object sender, EventArgs e)
@@ -443,7 +388,7 @@ namespace EUDL {
 						//TODO send command
 					}
 				} else {
-					client.Send(this.username + "\x1" + this.password + "\x1" + "m\x1" + input);
+					client.Send(settings.username + "\x1" + settings.password + "\x1" + "m\x1" + input);
 				}
 			}
 			textBoxInput.Clear();
@@ -455,11 +400,11 @@ namespace EUDL {
 		}
 
 		private void buttonCreateLobby_Click(object sender, EventArgs e) {
-			client.Send(username + "\x1" + password + "\x1" + "c\x1");
+			client.Send(settings.username + "\x1" + settings.password + "\x1" + "c\x1");
 		}
 
 		private void buttonSign_Click(object sender, EventArgs e) {
-			client.Send(username + "\x1" + password + "\x1" + "j\x1");
+			client.Send(settings.username + "\x1" + settings.password + "\x1" + "j\x1");
 		}
 
 		private void buttonSettings_Click(object sender, EventArgs e) {

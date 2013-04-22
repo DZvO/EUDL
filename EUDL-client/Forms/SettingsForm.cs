@@ -18,7 +18,7 @@ namespace EUDL {
 			s = s.load();
 			this.settings = s;
 
-			this.textBoxNickName.Text = s.nickname;
+			this.textBoxNickName.Text = s.username;
 			this.textBoxPassword.Text = s.password;
 			this.textBoxSteamName.Text = s.steamname;
 		}
@@ -29,7 +29,7 @@ namespace EUDL {
 				return;
 			}
 			Settings s = new Settings() {
-				nickname = textBoxNickName.Text,
+				username = textBoxNickName.Text,
 				password = textBoxPassword.Text,
 				steamname = textBoxSteamName.Text,
 			};
